@@ -1,10 +1,10 @@
 <?php
 namespace Concrete\Package\CommunityStore\Src\CommunityStore\Discount;
 
+use Pagerfanta\Adapter\DoctrineDbalAdapter;
 use Concrete\Core\Search\Pagination\Pagination;
 use Concrete\Core\Search\ItemList\Database\ItemList;
-use Pagerfanta\Adapter\DoctrineDbalAdapter;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Discount\DiscountRule as StoreDiscountRule;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Discount\DiscountRule;
 
 class DiscountRuleList extends ItemList
 {
@@ -46,7 +46,14 @@ class DiscountRuleList extends ItemList
         }
 
         if ($this->search) {
-            $query->andWhere('drName like ?')->setParameter($paramcount++, '%'. $this->search. '%');
+            $query->andWhere('drName like ?')->setParameter($paramcount++, '%' . $this->search . '%')
+                ->orWhere('drDisplay like ?')->setParameter($paramcount++, '%' . $this->search . '%');
+
+            $query->leftJoin('r', 'CommunityStoreDiscountCodes', 'rc', 'rc.drID = r.drID')
+                ->orWhere('dcCode like ?')->setParameter($paramcount++, '%' . $this->search . '%');
+
+            $query->groupBy('r.drID');
+
         }
 
         $query->andWhere('drDeleted is NULL');
@@ -56,7 +63,7 @@ class DiscountRuleList extends ItemList
 
     public function getResult($queryRow)
     {
-        $dr = StoreDiscountRule::getByID($queryRow['drID']);
+        $dr = DiscountRule::getByID($queryRow['drID']);
 
         if ($dr) {
             $dr->retrieveStatistics();
@@ -68,7 +75,7 @@ class DiscountRuleList extends ItemList
     protected function createPaginationObject()
     {
         $adapter = new DoctrineDbalAdapter($this->deliverQueryObject(), function ($query) {
-            $query->resetQueryParts(array('groupBy', 'orderBy'))->select('count(distinct r.drID)')->setMaxResults(1);
+            $query->resetQueryParts(['groupBy', 'orderBy'])->select('count(distinct r.drID)')->setMaxResults(1);
         });
         $pagination = new Pagination($this, $adapter);
 
@@ -79,6 +86,6 @@ class DiscountRuleList extends ItemList
     {
         $query = $this->deliverQueryObject();
 
-        return $query->resetQueryParts(array('groupBy', 'orderBy'))->select('count(distinct r.drID)')->setMaxResults(1)->execute()->fetchColumn();
+        return $query->resetQueryParts(['groupBy', 'orderBy'])->select('count(distinct r.drID)')->setMaxResults(1)->execute()->fetchColumn();
     }
 }

@@ -4,50 +4,42 @@
 
 An open, free and community developed eCommerce system for concrete5
 
-Please refer to the project wiki for more extended details - https://github.com/concrete5-community-store/community_store/wiki
+Please refer to the project wiki for extended details - https://github.com/concrete5-community-store/community_store/wiki
 
-The goal of this project is to provide a stable, feature rich, highly extensible and customizable 'shopping cart toolkit' for concrete5.7 and v8.
-
-At this point the add-on and it's associated payment and shipping methods are functioning well, but should still be considered beta.
-If you are not a concrete5 developer and wish to use the Community Store on a production site it is advised that you find a developer to assist you.
-
+The goal of this project is to provide a stable, feature rich, highly extensible and customizable 'shopping cart toolkit' for version 8+ of concrete5.
 The add-on will work directly with a Bootstrap based theme, primarily Elemental, but is intended to be easily modified and overriden for a custom theme.
+
+## PHP Version
+This add-on is intended to be run in a PHP 7 environment.
 
 ## Setup
 The package can be downloaded, unzipped into the /packages directory (ensuring the folder name is simply 'community_store') and installed via the 'Extend concrete5' option within the dashboard.  It is recommended that a 'release' be used instead of the master branch - https://github.com/concrete5-community-store/community_store/releases
+
+## Documentation
+Further documentation and how-tos can be found at https://concrete5-community-store.github.io/community_store/
+The documentation is automatically generated using https://vuepress.vuejs.org/, from the files within the [docs folder of the master branch](https://github.com/concrete5-community-store/community_store/tree/master/docs).
+Pull requests to the documentation are also welcome.
 
 ## Payment gateways
 To keep the 'core' store component as lightweight as possible it does not include a payment gateway other than the 'Invoice' type.
 Payment gateways are to be installed as additional add-ons.
 
-Additional gateways can be found at:
-
-### Paypal Standard
-https://github.com/concrete5-community-store/community_store_paypal_standard
-
-### Stripe
-https://github.com/concrete5-community-store/community_store_stripe
-
-### Pin Payments
-https://github.com/concrete5-community-store/community_store_pin_payments
-
-### Square
-https://github.com/Babinsky/community_store_square
-
-### Authorize.Net
-https://github.com/concrete5-community-store/community_store_authorize_net
-
-### SOFORT
-https://github.com/concrete5-community-store/community_store_sofort
+Additional gateways can be found at https://github.com/concrete5-community-store.
 
 ## Shipping Methods
 The store features two built in shipping methods, but like payment gateways these can be extended with further packages. 
 An simple example shipping method has been created for reference and can be found at:
 https://github.com/concrete5-community-store/community_store_shipping_example
 
-## Translations
-The Community Store package has multiple translations available at http://concrete5.github.io/package-translations/
-Translations are not included within the package, these need to be manually installed.
+Further pre-built shipping methods are also available at Additional gateways can be found at https://github.com/concrete5-community-store.
 
-## PHP Version
-This add-on is intended to support PHP5.4+ onwards, being 100% operational on PHP7.
+## Translations
+Interface translations for Community Store are managed at https://translate.concrete5.org/translate/package/community_store and can be installed via concrete5's dashboard.
+
+To provide translations, please register/login at the above link.
+
+## Additional Addons
+
+### User Account Order History
+Show a user's order history as a single page /account/orders:
+https://github.com/JeRoNZ/community_store_order_history

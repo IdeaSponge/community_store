@@ -1,53 +1,73 @@
 <?php
 namespace Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method;
 
-use Package;
-use View;
+use Concrete\Core\User\User;
+use Concrete\Core\View\View;
+use Doctrine\ORM\Mapping as ORM;
 use Illuminate\Filesystem\Filesystem;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethodTypeMethod as StoreShippingMethodTypeMethod;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethodType as StoreShippingMethodType;
+use Concrete\Core\Support\Facade\Session;
+use Concrete\Core\Support\Facade\Application;
+use Concrete\Core\Support\Facade\DatabaseORM as dbORM;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethodType as ShippingMethodType;
 
 /**
- * @Entity
- * @Table(name="CommunityStoreShippingMethods")
+ * @ORM\Entity
+ * @ORM\Table(name="CommunityStoreShippingMethods")
  */
 class ShippingMethod
 {
-    /** @Id @Column(type="integer") @GeneratedValue **/
+    /** @ORM\Id @ORM\Column(type="integer") @ORM\GeneratedValue **/
     protected $smID;
 
     /**
-     * @Column(type="integer")
+     * @ORM\Column(type="integer")
      */
     protected $smtID;
 
     /**
-     * @Column(type="integer")
+     * @ORM\Column(type="integer")
      */
     protected $smtmID;
 
     /**
-     * @Column(type="string")
+     * @ORM\Column(type="string")
      */
     protected $smName;
 
     /**
-     * @Column(type="text",nullable=true)
+     * @ORM\Column(type="text",nullable=true)
      */
     protected $smDetails;
 
     /**
-     * @Column(type="integer")
+     * @ORM\Column(type="string",nullable=true)
+     */
+    protected $smUserGroups;
+
+    /**
+     * @ORM\Column(type="string",nullable=true)
+     */
+    protected $smExcludedUserGroups;
+
+    /**
+     * @ORM\Column(type="integer")
      */
     protected $smEnabled;
 
+    /**
+     * @ORM\Column(type="integer", nullable=true)
+     */
+    protected $smSortOrder;
+
     protected $smOfferKey;
 
-    public function setOfferKey($key) {
+    public function setOfferKey($key)
+    {
         $this->smOfferKey = $key;
     }
 
-    public function getOfferKey() {
+    public function getOfferKey()
+    {
         if ($this->smOfferKey) {
             return $this->smOfferKey;
         } else {
@@ -59,31 +79,71 @@ class ShippingMethod
     {
         $this->smtID = $smt->getShippingMethodTypeID();
     }
+
     public function setShippingMethodTypeMethodID($smtm)
     {
         $this->smtmID = $smtm->getShippingMethodTypeMethodID();
     }
+
     public function setName($name)
     {
         $this->smName = $name;
     }
+
     public function setEnabled($status)
     {
         $this->smEnabled = $status;
     }
+
     public function setDetails($details)
     {
         $this->smDetails = $details;
+    }
+
+    public function setSortOrder($smSortOrder)
+    {
+        $this->smSortOrder = $smSortOrder;
+    }
+
+
+    public function getUserGroups()
+    {
+        return $this->smUserGroups ? explode(',', $this->smUserGroups) : [];
+    }
+
+    public function setUserGroups($userGroups)
+    {
+        if (is_array($userGroups)) {
+            $this->smUserGroups = implode(',', $userGroups);
+        } else {
+            $this->smUserGroups = '';
+        }
+    }
+
+    public function getExcludedUserGroups()
+    {
+        return $this->smExcludedUserGroups ? explode(',', $this->smExcludedUserGroups) : [];
+    }
+
+    public function setExcludedUserGroups($userGroups)
+    {
+        if (is_array($userGroups)) {
+            $this->smExcludedUserGroups = implode(',', $userGroups);
+        } else {
+            $this->smExcludedUserGroups = '';
+        }
     }
 
     public function getID()
     {
         return $this->smID;
     }
+
     public function getShippingMethodType()
     {
-        return StoreShippingMethodType::getByID($this->smtID);
+        return ShippingMethodType::getByID($this->smtID);
     }
+
     public function getShippingMethodTypeMethod()
     {
         $methodTypeController = $this->getShippingMethodType()->getMethodTypeController();
@@ -91,18 +151,22 @@ class ShippingMethod
 
         return $methodTypeMethod;
     }
-    public function getOffers() {
+
+    public function getOffers()
+    {
         $offers = $this->getShippingMethodTypeMethod()->getOffers();
         $count = 0;
 
-        foreach($offers as $offer) {
+        foreach ($offers as $offer) {
             $offer->setMethodLabel($this->getName());
-            $offer->setKey($this->getID().'_' . $count++);
+            $offer->setKey($this->getID() . '_' . $count++);
         }
+
         return $offers;
     }
 
-    public function getCurrentOffer() {
+    public function getCurrentOffer()
+    {
         $currentOffers = $this->getOffers();
 
         if ($currentOffers && isset($currentOffers[$this->getOfferKey()])) {
@@ -116,13 +180,21 @@ class ShippingMethod
     {
         return $this->smName;
     }
+
     public function getDetails()
     {
         return $this->smDetails;
     }
+
+
     public function isEnabled()
     {
         return $this->smEnabled;
+    }
+
+    public function getSortOrder()
+    {
+        return $this->smSortOrder;
     }
 
     public static function getByID($smID)
@@ -130,13 +202,14 @@ class ShippingMethod
         $ident = explode('_', $smID);
         $smID = $ident[0];
 
-        $em = \ORM::entityManager();
-        $method =  $em->find(get_called_class(), $smID);
+        $em = dbORM::entityManager();
+        $method = $em->find(get_called_class(), $smID);
 
         if ($method) {
             if (isset($ident[1])) {
                 $method->setOfferKey($ident[1]);
             }
+
             return $method;
         }
 
@@ -145,11 +218,11 @@ class ShippingMethod
 
     public static function getAvailableMethods($methodTypeID = null)
     {
-        $em = \ORM::entityManager();
+        $em = dbORM::entityManager();
         if ($methodTypeID) {
-            $methods = $em->getRepository(get_called_class())->findBy(array('smtID' => $methodTypeID, 'smEnabled'=>'1'));
+            $methods = $em->getRepository(get_called_class())->findBy(['smtID' => $methodTypeID, 'smEnabled' => '1']);
         } else {
-            $methods = $em->createQuery('select sm from \Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethod sm where sm.smEnabled = 1')->getResult();
+            $methods = $em->createQuery('select sm from \Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethod sm where sm.smEnabled = 1 order by sm.smSortOrder')->getResult();
         }
 
         return $methods;
@@ -157,9 +230,9 @@ class ShippingMethod
 
     public static function getMethods($methodTypeID = null)
     {
-        $em = \ORM::entityManager();
+        $em = dbORM::entityManager();
         if ($methodTypeID) {
-            $methods = $em->getRepository(get_called_class())->findBy(array('smtID' => $methodTypeID));
+            $methods = $em->getRepository(get_called_class())->findBy(['smtID' => $methodTypeID]);
         } else {
             $methods = $em->createQuery('select sm from \Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethod sm')->getResult();
         }
@@ -168,14 +241,14 @@ class ShippingMethod
     }
 
     /**
-     * @param StoreShippingMethodTypeMethod $smtm
-     * @param StoreShippingMethodType $smt
-     * @param string $smName
-     * @param bool $smEnabled
+     * @ORM\param StoreShippingMethodTypeMethod $smtm
+     * @ORM\param StoreShippingMethodType $smt
+     * @ORM\param string $smName
+     * @ORM\param bool $smEnabled
      *
-     * @return ShippingMethod
+     * @ORM\return ShippingMethod
      */
-    public static function add($smtm, $smt, $smName, $smEnabled, $smDetails)
+    public static function add($smtm, $smt, $smName, $smEnabled, $smDetails, $smSortOrder, $userGroups, $excludedUserGroups)
     {
         $sm = new self();
         $sm->setShippingMethodTypeMethodID($smtm);
@@ -183,44 +256,69 @@ class ShippingMethod
         $sm->setName($smName);
         $sm->setEnabled($smEnabled);
         $sm->setDetails($smDetails);
+        $sm->setSortOrder($smSortOrder);
+        $sm->setUserGroups($userGroups);
+        $sm->setExcludedUserGroups($excludedUserGroups);
         $sm->save();
         $smtm->setShippingMethodID($sm->getID());
         $smtm->save();
 
         return $sm;
     }
-    public function update($smName, $smEnabled, $smDetails)
+
+    public function update($smName, $smEnabled, $smDetails, $smSortOrder, $userGroups, $excludedUserGroups)
     {
         $this->setName($smName);
         $this->setEnabled($smEnabled);
+        $this->setSortOrder($smSortOrder);
         $this->setDetails($smDetails);
+        $this->setUserGroups($userGroups);
+        $this->setExcludedUserGroups($excludedUserGroups);
         $this->save();
 
         return $this;
     }
+
     public function save()
     {
-        $em = \ORM::entityManager();
+        $em = dbORM::entityManager();
         $em->persist($this);
         $em->flush();
     }
+
     public function delete()
     {
         $this->getShippingMethodTypeMethod()->delete();
-        $em = \ORM::entityManager();
+        $em = dbORM::entityManager();
         $em->remove($this);
         $em->flush();
     }
+
     public static function getEligibleMethods()
     {
         $allMethods = self::getAvailableMethods();
-        $eligibleMethods = array();
+        $eligibleMethods = [];
+
+        $u = new User();
+        $userGroups = $u->getUserGroups();
+
         foreach ($allMethods as $method) {
+            $includedGroups = $method->getUserGroups();
+            $excludedGroups = $method->getExcludedUserGroups();
+
+            if (count($includedGroups) > 0 && count(array_intersect($includedGroups, $userGroups)) == 0) {
+                continue;
+            }
+
+            if (count($excludedGroups) > 0 && count(array_intersect($excludedGroups, $userGroups)) > 0) {
+                continue;
+            }
+
             if ($method->getShippingMethodTypeMethod()->isEligible()) {
                 $eligibleMethods[] = $method;
             }
         }
-
+        
         return $eligibleMethods;
     }
 
@@ -228,7 +326,7 @@ class ShippingMethod
     {
         if (Filesystem::exists(DIR_BASE . "/application/elements/checkout/shipping_methods.php")) {
             View::element("checkout/shipping_methods");
-        } else if (Filesystem::exists(DIR_BASE . "/packages/" . $this->getPackageHandle() . "/elements/checkout/shipping_methods.php")) {
+        } elseif (Filesystem::exists(DIR_BASE . "/packages/" . $this->getPackageHandle() . "/elements/checkout/shipping_methods.php")) {
             View::element("checkout/shipping_methods", $this, $this->getPackageHandle());
         } else {
             View::element("checkout/shipping_methods", "community_store");
@@ -237,7 +335,7 @@ class ShippingMethod
 
     public static function getActiveShippingMethod()
     {
-        $smID = \Session::get('community_store.smID');
+        $smID = Session::get('community_store.smID');
         if ($smID) {
             $sm = self::getByID($smID);
 
@@ -245,7 +343,8 @@ class ShippingMethod
         }
     }
 
-    public static function getActiveShippingLabel() {
+    public static function getActiveShippingLabel()
+    {
         $activeShippingMethod = self::getActiveShippingMethod();
 
         if ($activeShippingMethod) {
@@ -255,10 +354,11 @@ class ShippingMethod
             }
         }
 
-       return '';
+        return '';
     }
 
-    public static function getActiveShipmentID() {
+    public static function getActiveShipmentID()
+    {
         $activeShippingMethod = self::getActiveShippingMethod();
 
         if ($activeShippingMethod) {
@@ -268,10 +368,11 @@ class ShippingMethod
             }
         }
 
-       return '';
+        return '';
     }
 
-    public static function getActiveRateID() {
+    public static function getActiveRateID()
+    {
         $activeShippingMethod = self::getActiveShippingMethod();
 
         if ($activeShippingMethod) {
@@ -284,8 +385,8 @@ class ShippingMethod
         return '';
     }
 
-    public function getPackageHandle() {
-        return Package::getByID($this->getShippingMethodType()->getPackageID())->getPackageHandle();
+    public function getPackageHandle()
+    {
+        return Application::getFacadeApplication()->make('Concrete\Core\Package\PackageService')->getByID($this->getShippingMethodType()->getPackageID())->getPackageHandle();
     }
-
 }

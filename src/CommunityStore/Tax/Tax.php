@@ -1,16 +1,22 @@
 <?php
 namespace Concrete\Package\CommunityStore\Src\CommunityStore\Tax;
 
-use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Price as StorePrice;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Product\Product as StoreProduct;
-use Database;
-use Config;
+use Concrete\Core\Support\Facade\DatabaseORM as dbORM;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Product\Product;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Price;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Wholesale;
 
 class Tax
 {
-    public static function getTaxRates()
+    public static function getTaxRates($showall = false)
     {
-        $em = \ORM::entityManager();
+        if (!$showall) {
+            if (Wholesale::isUserWholesale()) {
+                return $taxRates = [];
+            }
+        }
+
+        $em = dbORM::entityManager();
         $taxRates = $em->createQuery('select tr from \Concrete\Package\CommunityStore\Src\CommunityStore\Tax\TaxRate tr')->getResult();
 
         return $taxRates;
@@ -19,7 +25,7 @@ class Tax
     public static function getTaxes($format = false)
     {
         $taxRates = self::getTaxRates();
-        $taxes = array();
+        $taxes = [];
         if (count($taxRates) > 0) {
             foreach ($taxRates as $taxRate) {
                 if ($taxRate->isTaxable()) {
@@ -34,17 +40,18 @@ class Tax
                     } else {
                         $tax = false;
                     }
-                    if ($format == true) {
-                        $taxAmount = StorePrice::format($taxAmount);
+                    if (true == $format) {
+                        $taxAmount = Price::format($taxAmount);
                     }
-                    $taxes[] = array(
+                    $taxes[] = [
                         'name' => $taxRate->getTaxLabel(),
                         'producttaxamount' => $productTaxAmount,
                         'shippingtaxamount' => $shippingTaxAmount,
                         'taxamount' => $taxAmount,
                         'based' => $taxRate->getTaxBasedOn(),
                         'taxed' => $tax,
-                    );
+                        'id' => $taxRate->getID(),
+                    ];
                 }
             }
         }
@@ -54,24 +61,30 @@ class Tax
 
     public static function getTaxForProduct($cartItem)
     {
-        $product = StoreProduct::getByID($cartItem['product']['pID']);
+        $product = Product::getByID($cartItem['product']['pID']);
+
+        if ($cartItem['product']['variation']) {
+            $product->shallowClone = true;
+            $product = clone $product;
+            $product->setVariation($cartItem['product']['variation']);
+        }
+
         $qty = $cartItem['product']['qty'];
         $taxRates = self::getTaxRates();
-        $taxes = array();
+        $taxes = [];
         if (count($taxRates) > 0) {
             foreach ($taxRates as $taxRate) {
                 if ($taxRate->isTaxable()) {
                     $taxAmount = $taxRate->calculateProduct($product, $qty);
-                    $taxes[] = array(
+                    $taxes[] = [
                         'name' => $taxRate->getTaxLabel(),
                         'taxamount' => $taxAmount,
                         'based' => $taxRate->getTaxBasedOn(),
-                    );
+                    ];
                 }
             }
         }
 
         return $taxes;
     }
-    
 }

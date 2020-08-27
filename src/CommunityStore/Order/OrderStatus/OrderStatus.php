@@ -1,38 +1,38 @@
 <?php
 namespace Concrete\Package\CommunityStore\Src\CommunityStore\Order\OrderStatus;
 
-use Concrete\Core\Foundation\Object as Object;
+use Doctrine\ORM\Mapping as ORM;
 use Concrete\Core\Utility\Service\Text as TextHelper;
 use Concrete\Core\Support\Facade\Application;
 
 /**
- * @Entity
- * @Table(name="CommunityStoreOrderStatuses")
+ * @ORM\Entity
+ * @ORM\Table(name="CommunityStoreOrderStatuses")
  */
-class OrderStatus extends Object
+class OrderStatus
 {
     /**
-     * @Id @Column(type="integer")
-     * @GeneratedValue
+     * @ORM\Id @ORM\Column(type="integer")
+     * @ORM\GeneratedValue
      */
     protected $osID;
 
-    /** @Column(type="text") */
+    /** @ORM\Column(type="text") */
     protected $osHandle;
 
-    /** @Column(type="text") */
+    /** @ORM\Column(type="text") */
     protected $osName;
 
-    /** @Column(type="boolean") */
+    /** @ORM\Column(type="boolean") */
     protected $osInformSite;
 
-    /** @Column(type="boolean") */
+    /** @ORM\Column(type="boolean") */
     protected $osInformCustomer;
 
-    /** @Column(type="boolean") */
+    /** @ORM\Column(type="boolean") */
     protected $osIsStartingStatus;
 
-    /** @Column(type="integer",nullable=true) */
+    /** @ORM\Column(type="integer",nullable=true) */
     protected $osSortOrder;
 
     protected static $table = "CommunityStoreOrderStatuses";
@@ -70,7 +70,7 @@ class OrderStatus extends Object
         $app = Application::getFacadeApplication();
         $db = $app->make('database')->connection();
         $rows = $db->GetAll("SELECT osID FROM CommunityStoreOrderStatuses ORDER BY osSortOrder ASC, osID ASC");
-        $statuses = array();
+        $statuses = [];
         if (count($rows) > 0) {
             foreach ($rows as $row) {
                 $statuses[] = self::getByID($row['osID']);
@@ -82,7 +82,7 @@ class OrderStatus extends Object
 
     public static function getList()
     {
-        $statuses = array();
+        $statuses = [];
         foreach (self::getAll() as $status) {
             $statuses[$status->getHandle()] = t($status->getName());
         }
@@ -99,13 +99,13 @@ class OrderStatus extends Object
         $app = Application::getFacadeApplication();
         $db = $app->make('database')->connection();
         $sql = "INSERT INTO CommunityStoreOrderStatuses (osHandle, osName, osInformSite, osInformCustomer, osIsStartingStatus) VALUES (?, ?, ?, ?, ?)";
-        $values = array(
+        $values = [
             $osHandle,
             $osName,
             $osInformSite ? 1 : 0,
             $osInformCustomer ? 1 : 0,
-            $osIsStartingStatus ? 1 : 0
-        );
+            $osIsStartingStatus ? 1 : 0,
+        ];
         $db->query($sql, $values);
 
         if ($osIsStartingStatus) {
@@ -129,6 +129,7 @@ class OrderStatus extends Object
 
         return $textHelper->unhandle($this->osHandle);
     }
+
     public function getName()
     {
         return $this->osName;
@@ -193,7 +194,7 @@ class OrderStatus extends Object
         $app = Application::getFacadeApplication();
         $db = $app->make('database')->connection();
         $sql = "UPDATE CommunityStoreOrderStatuses SET " . $column . "=? WHERE osID=?";
-        $db->Execute($sql, array($column, $value));
+        $db->executeQuery($sql, [$column, $value]);
     }
 
     public static function setNewStartingStatus($osHandle = null)
@@ -204,19 +205,20 @@ class OrderStatus extends Object
                 $app = Application::getFacadeApplication();
                 $db = $app->make('database')->connection();
                 $db->query("UPDATE CommunityStoreOrderStatuses SET osIsStartingStatus=0 WHERE 1=1");
-                $db->query("UPDATE CommunityStoreOrderStatuses SET osIsStartingStatus=1 WHERE osHandle=?", array($osHandle));
+                $db->query("UPDATE CommunityStoreOrderStatuses SET osIsStartingStatus=1 WHERE osHandle=?", [$osHandle]);
             }
         }
     }
-    public function update($data = array(), $ignoreFilledColumns = false)
+
+    public function update($data = [], $ignoreFilledColumns = false)
     {
-        $orderStatusArray = array(
+        $orderStatusArray = [
             'osHandle' => $this->osHandle,
             'osName' => $this->osName,
             'osInformSite' => $this->osInformSite,
             'osInformCustomer' => $this->osInformCustomer,
             'osSortOrder' => $this->osSortOrder,
-        );
+        ];
         $startingStatusHandle = null;
         if (isset($data['osIsStartingStatus'])) {
             $startingStatusHandle = $this->osHandle;
@@ -229,7 +231,7 @@ class OrderStatus extends Object
             $values[] = $this->osID;
             $app = Application::getFacadeApplication();
             $db = $app->make('database')->connection();
-            $db->Execute("UPDATE CommunityStoreOrderStatuses SET " . $columnPhrase . " WHERE osID=?", $values);
+            $db->executeQuery("UPDATE CommunityStoreOrderStatuses SET " . $columnPhrase . " WHERE osID=?", $values);
             if ($startingStatusHandle) {
                 self::setNewStartingStatus($startingStatusHandle);
             }
@@ -238,5 +240,12 @@ class OrderStatus extends Object
         }
 
         return false;
+    }
+
+    public function setPropertiesFromArray($arr)
+    {
+        foreach ($arr as $key => $prop) {
+            $this->{$key} = $prop;
+        }
     }
 }

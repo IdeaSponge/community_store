@@ -1,17 +1,33 @@
 <?php
 namespace Concrete\Package\CommunityStore\Src\CommunityStore\Utilities;
 
-use Concrete\Package\CommunityStore\Src\CommunityStore\Cart\Cart as StoreCart;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Tax\Tax as StoreTax;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethod as StoreShippingMethod;
-use Config;
-use Session;
+use Concrete\Core\Support\Facade\Config;
+use Concrete\Core\Support\Facade\Session;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Tax\Tax;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Cart\Cart;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethod;
 
 class Calculator
 {
-    public static function getSubTotal()
+    public static function getCartItemPrice($cartItem)
     {
-        $cart = StoreCart::getCart();
+        $product = $cartItem['product']['object'];
+        $qty = $cartItem['product']['qty'];
+        if (isset($cartItem['product']['customerPrice']) && $cartItem['product']['customerPrice'] > 0) {
+            $price = $cartItem['product']['customerPrice'];
+        } elseif (isset($cartItem['product']['discountedPrice'])) {
+            $price = $cartItem['product']['discountedPrice'];
+        } else {
+            $price = $product->getActivePrice($qty);
+        }
+        return $price;
+    }
+
+    public static function getSubTotal($cart = false)
+    {
+        if (!$cart) {
+            $cart = Cart::getCart();
+        }
         $subtotal = 0;
         if ($cart) {
             foreach ($cart as $cartItem) {
@@ -19,12 +35,7 @@ class Calculator
                 $product = $cartItem['product']['object'];
 
                 if (is_object($product)) {
-
-                    if (isset($cartItem['product']['customerPrice']) && $cartItem['product']['customerPrice'] > 0) {
-                        $price = $cartItem['product']['customerPrice'];
-                    } else {
-                        $price = $product->getActivePrice();
-                    }
+                    $price = Calculator::getCartItemPrice($cartItem);
 
                     $productSubTotal = $price * $qty;
                     $subtotal = $subtotal + $productSubTotal;
@@ -34,19 +45,20 @@ class Calculator
 
         return round(max($subtotal, 0), 2);
     }
+
     public static function getShippingTotal($smID = null)
     {
-        $cart = StoreCart::getCart();
+        $cart = Cart::getCart();
         if (empty($cart)) {
-            return false;
+            return 0;
         }
 
         $existingShippingMethodID = Session::get('community_store.smID');
         if ($smID) {
-            $shippingMethod = StoreShippingMethod::getByID($smID);
+            $shippingMethod = ShippingMethod::getByID($smID);
             Session::set('community_store.smID', $smID);
         } elseif ($existingShippingMethodID) {
-            $shippingMethod = StoreShippingMethod::getByID($existingShippingMethodID);
+            $shippingMethod = ShippingMethod::getByID($existingShippingMethodID);
         }
 
         if (is_object($shippingMethod) && $shippingMethod->getCurrentOffer()) {
@@ -57,26 +69,28 @@ class Calculator
 
         return round($shippingTotal, 2);
     }
+
     public static function getTaxTotals()
     {
-        return StoreTax::getTaxes();
+        return Tax::getTaxes();
     }
 
     public static function getGrandTotal()
     {
         $totals = self::getTotals();
+
         return $totals['total'];
     }
 
-        // returns an array of formatted cart totals
+    // returns an array of formatted cart totals
     public static function getTotals()
     {
         $subTotal = self::getSubTotal();
 
-        $taxes = StoreTax::getTaxes();
+        $taxes = Tax::getTaxes();
 
         $shippingTotal = self::getShippingTotal();
-        $discounts = StoreCart::getDiscounts();
+        $discounts = Cart::getDiscounts();
 
         $addedTaxTotal = 0;
         $includedTaxTotal = 0;
@@ -87,7 +101,7 @@ class Calculator
 
         if ($taxes) {
             foreach ($taxes as $tax) {
-                if ($taxCalc != 'extract') {
+                if ('extract' != $taxCalc) {
                     $addedTaxTotal += $tax['producttaxamount'];
                     $addedShippingTaxTotal += $tax['shippingtaxamount'];
                 } else {
@@ -99,33 +113,30 @@ class Calculator
 
         $adjustedSubtotal = $subTotal;
         $adjustedShippingTotal = $shippingTotal;
-		$discountRatio = 1;
+        $discountRatio = 1;
         $discountShippingRatio = 1;
 
-        $formattedtaxes = array();
+        $formattedtaxes = [];
         if (!empty($discounts)) {
             foreach ($discounts as $discount) {
-                if ($discount->getDeductFrom() == 'subtotal') {
-                    if ($discount->getDeductType() == 'value') {
+                if ('subtotal' == $discount->getDeductFrom()) {
+                    if ('value' == $discount->getDeductType()) {
                         $adjustedSubtotal -= $discount->getValue();
                     }
-
-                    if ($discount->getDeductType() == 'percentage') {
-                        $adjustedSubtotal -= ($discount->getPercentage() / 100 * $adjustedSubtotal);
-                    }
-                } elseif($discount->getDeductFrom() == 'shipping') {
-
-                    if ($discount->getDeductType() == 'value') {
+                } elseif ('shipping' == $discount->getDeductFrom()) {
+                    if ('value' == $discount->getDeductType() || 'value_all' == $discount->getDeductType()) {
                         $adjustedShippingTotal -= $discount->getValue();
                     }
 
-                    if ($discount->getDeductType() == 'percentage') {
+                    if ('percentage' == $discount->getDeductType()) {
                         $adjustedShippingTotal -= ($discount->getPercentage() / 100 * $adjustedShippingTotal);
+                    }
+
+                    if ('fixed' == $discount->getDeductType()) {
+                        $adjustedShippingTotal = $discount->getValue();
                     }
                 }
             }
-
-
 
             if ($subTotal > 0) {
                 $discountRatio = $adjustedSubtotal / $subTotal;
@@ -135,15 +146,14 @@ class Calculator
                 $discountShippingRatio = $adjustedShippingTotal / $shippingTotal;
             }
 
-            $addedTaxTotal  = $discountRatio * $addedTaxTotal;
-            $addedShippingTaxTotal  =  $discountShippingRatio * $addedShippingTaxTotal;
+            $addedTaxTotal = $discountRatio * $addedTaxTotal;
+            $addedShippingTaxTotal = $discountShippingRatio * $addedShippingTaxTotal;
 
-            $includedTaxTotal  = $discountRatio * $includedTaxTotal ;
-            $includedShippingTaxTotal  =  $discountShippingRatio * $includedShippingTaxTotal;
+            $includedTaxTotal = $discountRatio * $includedTaxTotal;
+            $includedShippingTaxTotal = $discountShippingRatio * $includedShippingTaxTotal;
 
-
-            foreach($taxes as $tax) {
-                $tax['taxamount'] =  round(($discountRatio * $tax['producttaxamount']) + ($discountShippingRatio * $tax['shippingtaxamount']),2);
+            foreach ($taxes as $tax) {
+                $tax['taxamount'] = round(($discountRatio * $tax['producttaxamount']) + ($discountShippingRatio * $tax['shippingtaxamount']), 2);
                 $formattedtaxes[] = $tax;
             }
 
@@ -169,6 +179,6 @@ class Calculator
         $totalTax = round($totalTax, 2);
         $total = round($total, 2);
 
-        return array('discountRatio'=>$discountRatio,'subTotal' => $adjustedSubtotal, 'taxes' => $taxes, 'taxTotal' => $totalTax, 'addedTaxTotal'=>$addedTaxTotal + $addedShippingTaxTotal,'includeTaxTotal'=>$includedTaxTotal + $includedShippingTaxTotal, 'shippingTotal' => $adjustedShippingTotal, 'total' => $total);
+        return ['discountRatio' => $discountRatio, 'subTotal' => $adjustedSubtotal, 'taxes' => $taxes, 'taxTotal' => $totalTax, 'addedTaxTotal' => $addedTaxTotal + $addedShippingTaxTotal, 'includeTaxTotal' => $includedTaxTotal + $includedShippingTaxTotal, 'shippingTotal' => $adjustedShippingTotal, 'total' => $total];
     }
 }

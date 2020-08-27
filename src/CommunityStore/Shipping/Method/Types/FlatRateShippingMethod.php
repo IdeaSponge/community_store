@@ -1,62 +1,62 @@
 <?php
 namespace Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\Types;
 
-use Package;
-use Core;
-use Database;
+use Doctrine\ORM\Mapping as ORM;
+use Concrete\Core\Support\Facade\Application;
+use Concrete\Core\Support\Facade\DatabaseORM as dbORM;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Cart\Cart;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Product\Product;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Customer\Customer;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Calculator;
 use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethodTypeMethod;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Product\Product as StoreProduct;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Cart\Cart as StoreCart;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Utilities\Calculator as StoreCalculator;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Customer\Customer as StoreCustomer;
-use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethodOffer as StoreShippingMethodOffer;
+use Concrete\Package\CommunityStore\Src\CommunityStore\Shipping\Method\ShippingMethodOffer;
 
 /**
- * @Entity
- * @Table(name="CommunityStoreFlatRateMethods")
+ * @ORM\Entity
+ * @ORM\Table(name="CommunityStoreFlatRateMethods")
  */
 class FlatRateShippingMethod extends ShippingMethodTypeMethod
 {
     /**
-     * @Column(type="float")
+     * @ORM\Column(type="float")
      */
     protected $baseRate;
 
     /**
-     * @Column(type="string")
+     * @ORM\Column(type="string")
      */
     protected $rateType;
     /**
-     * @Column(type="float",nullable=true)
+     * @ORM\Column(type="float",nullable=true)
      */
     protected $perItemRate;
     /**
-     * @Column(type="float",nullable=true)
+     * @ORM\Column(type="float",nullable=true)
      */
     protected $perWeightRate;
     /**
-     * @Column(type="float")
+     * @ORM\Column(type="float")
      */
     protected $minimumAmount;
     /**
-     * @Column(type="float")
+     * @ORM\Column(type="float")
      */
     protected $maximumAmount;
 
     /**
-     * @Column(type="float")
+     * @ORM\Column(type="float")
      */
     protected $minimumWeight;
     /**
-     * @Column(type="float")
+     * @ORM\Column(type="float")
      */
     protected $maximumWeight;
     /**
-     * @Column(type="string")
+     * @ORM\Column(type="string")
      */
     protected $countries;
     /**
-     * @Column(type="text",nullable=true)
+     * @ORM\Column(type="text",nullable=true)
      */
     protected $countriesSelected;
 
@@ -64,38 +64,47 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
     {
         $this->baseRate = $baseRate > 0 ? $baseRate : 0;
     }
+
     public function setRateType($rateType)
     {
         $this->rateType = $rateType;
     }
+
     public function setPerItemRate($perItemRate)
     {
         $this->perItemRate = $perItemRate > 0 ? $perItemRate : null;
     }
+
     public function setPerWeightRate($perWeightRate)
     {
         $this->perWeightRate = $perWeightRate > 0 ? $perWeightRate : null;
     }
+
     public function setMinimumAmount($minAmount)
     {
         $this->minimumAmount = $minAmount > 0 ? $minAmount : 0;
     }
+
     public function setMaximumAmount($maxAmount)
     {
         $this->maximumAmount = $maxAmount > 0 ? $maxAmount : 0;
     }
+
     public function setMinimumWeight($minWeight)
     {
         $this->minimumWeight = $minWeight > 0 ? $minWeight : 0;
     }
+
     public function setMaximumWeight($maxWeight)
     {
         $this->maximumWeight = $maxWeight > 0 ? $maxWeight : 0;
     }
+
     public function setCountries($countries)
     {
         $this->countries = $countries;
     }
+
     public function setCountriesSelected($countriesSelected)
     {
         $this->countriesSelected = $countriesSelected;
@@ -105,38 +114,47 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
     {
         return $this->baseRate;
     }
+
     public function getRateType()
     {
         return $this->rateType;
     }
+
     public function getPerItemRate()
     {
         return $this->perItemRate;
     }
+
     public function getPerWeightRate()
     {
         return $this->perWeightRate;
     }
+
     public function getMinimumAmount()
     {
         return $this->minimumAmount;
     }
+
     public function getMaximumAmount()
     {
         return $this->maximumAmount;
     }
+
     public function getMinimumWeight()
     {
         return $this->minimumWeight;
     }
+
     public function getMaximumWeight()
     {
         return $this->maximumWeight;
     }
+
     public function getCountries()
     {
         return $this->countries;
     }
+
     public function getCountriesSelected()
     {
         return $this->countriesSelected;
@@ -146,6 +164,7 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
     {
         return $this->addOrUpdate('add', $data);
     }
+
     public function update($data)
     {
         return $this->addOrUpdate('update', $data);
@@ -153,7 +172,7 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
 
     private function addOrUpdate($type, $data)
     {
-        if ($type == "update") {
+        if ("update" == $type) {
             $sm = $this;
         } else {
             $sm = new self();
@@ -172,7 +191,7 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
         }
         $sm->setCountriesSelected($countriesSelected);
 
-        $em = \ORM::entityManager();
+        $em = dbORM::entityManager();
         $em->persist($sm);
         $em->flush();
 
@@ -181,9 +200,10 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
 
     public function dashboardForm($shippingMethod = null)
     {
-        $this->set('form', Core::make("helper/form"));
+        $app = Application::getFacadeApplication();
+        $this->set('form', $app->make("helper/form"));
         $this->set('smt', $this);
-        $this->set('countryList', Core::make('helper/lists/countries')->getCountries());
+        $this->set('countryList', $app->make('helper/lists/countries')->getCountries());
 
         if (is_object($shippingMethod)) {
             $smtm = $shippingMethod->getShippingMethodTypeMethod();
@@ -192,15 +212,16 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
         }
         $this->set("smtm", $smtm);
     }
+
     public function validate($args, $e)
     {
-        if ($args['baseRate'] == "") {
+        if ("" == $args['baseRate']) {
             $e->add(t("Please set a Base Rate"));
         }
         if (!is_numeric($args['baseRate'])) {
             $e->add(t("Base Rate should be a number"));
         }
-        if (!$args['perItemRate'] == "") {
+        if ("" == !$args['perItemRate']) {
             if (!is_numeric($args['perItemRate'])) {
                 $e->add(t("The Price Per Item doesn't have to be set, but it does have to be numeric"));
             }
@@ -229,9 +250,9 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
 
     public function isWithinRange()
     {
-        $subtotal = StoreCalculator::getSubTotal();
+        $subtotal = Calculator::getSubTotal();
         $max = $this->getMaximumAmount();
-        if ($max != 0) {
+        if (0 != $max) {
             if ($subtotal >= $this->getMinimumAmount() && $subtotal <= $this->getMaximumAmount()) {
                 return true;
             } else {
@@ -246,9 +267,9 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
 
     public function isWithinWeight()
     {
-        $totalWeight = StoreCart::getCartWeight();
+        $totalWeight = Cart::getCartWeight();
         $maxWeight = $this->getMaximumWeight();
-        if ($maxWeight != 0) {
+        if (0 != $maxWeight) {
             if ($totalWeight >= $this->getMinimumWeight() && $totalWeight <= $this->getMaximumWeight()) {
                 return true;
             } else {
@@ -263,9 +284,9 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
 
     public function isWithinSelectedCountries()
     {
-        $customer = new StoreCustomer();
+        $customer = new Customer();
         $custCountry = $customer->getValue('shipping_address')->country;
-        if ($this->getCountries() != 'all') {
+        if ('all' != $this->getCountries()) {
             $selectedCountries = explode(',', $this->getCountriesSelected());
             if (in_array($custCountry, $selectedCountries)) {
                 return true;
@@ -279,11 +300,12 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
 
     private function getRate()
     {
-        $shippableItems = StoreCart::getShippableItems();
+        $shippableItems = Cart::getShippableItems();
+
         if (count($shippableItems) > 0) {
-            if ($this->getRateType() == 'quantity') {
+            if ('quantity' == $this->getRateType()) {
                 $shippingTotal = $this->getQuantityBasedRate($shippableItems);
-            } elseif ($this->getRateType() == 'weight') {
+            } elseif ('weight' == $this->getRateType()) {
                 $shippingTotal = $this->getWeightBasedRate($shippableItems);
             }
         } else {
@@ -298,11 +320,7 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
         $baserate = $this->getBaseRate();
         $totalWeight = 0;
         foreach ($shippableItems as $item) {
-            $product = StoreProduct::getByID($item['product']['pID']);
-
-            if ($item['product']['variation']) {
-                $product->setVariation($item['product']['variation']);
-            }
+            $product = $item['product']['object'];
 
             if ($product->isShippable()) {
                 $totalProductWeight = $product->getWeight() * $item['product']['qty'];
@@ -324,35 +342,36 @@ class FlatRateShippingMethod extends ShippingMethodTypeMethod
         //go through items
         foreach ($shippableItems as $item) {
             //check if items are shippable
-            $product = StoreProduct::getByID($item['product']['pID']);
+            $product = Product::getByID($item['product']['pID']);
             if ($product->isShippable()) {
                 $totalQty = $totalQty + $item['product']['qty'];
             }
         }
-        if ($totalQty > 1) {
-            $shippingTotal = $baserate + (($totalQty - 1) * $peritemrate);
-        } elseif ($totalQty == 1) {
-            $shippingTotal = $baserate;
-        }
+
+        $shippingTotal = $baserate + ($totalQty * $peritemrate);
 
         return $shippingTotal;
     }
 
-    public function getShippingMethodTypeName() {
+    public function getShippingMethodTypeName()
+    {
         return t('Flat Rate');
     }
 
-    public function getOffers() {
-        $offers = array();
+    public function getOffers()
+    {
+        $offers = [];
 
-        $offer = new StoreShippingMethodOffer();
+        $offer = new ShippingMethodOffer();
         $offer->setRate($this->getRate());
 
         $offers[] = $offer;
+
         return $offers;
     }
 
-    public function getOffer($key) {
+    public function getOffer($key)
+    {
         $this->getOffers()[$key];
     }
 }
